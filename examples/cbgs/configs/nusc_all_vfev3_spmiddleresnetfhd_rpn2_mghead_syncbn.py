@@ -158,6 +158,15 @@ model = dict(
         norm_cfg=norm_cfg,
         logger=logging.getLogger("RPN"),
     ),
+    extra_head=dict(
+        type="MultiGroupPSWarpHead",
+        grid_offsets = (0., 40.),
+        featmap_stride=.4,
+        in_channels=512,
+        num_classes=[1,2,2,1,2,2],
+        num_groups=6,
+        num_parts=28,
+    ),
     bbox_head=dict(
         # type='RPNHead',
         type="MultiGroupHead",
@@ -216,12 +225,12 @@ test_cfg = dict(
 # dataset settings
 dataset_type = "NuScenesDataset"
 n_sweeps = 10
-data_root = "/data/Datasets/nuScenes"
+data_root = "../nuscenes_data"
 
 db_sampler = dict(
     type="GT-AUG",
     enable=False,
-    db_info_path="/data/Datasets/nuScenes/dbinfos_train_10sweeps_withvelo.pkl",
+    db_info_path="../nuscenes_data/dbinfos_train_10sweeps_withvelo.pkl",
     sample_groups=[
         dict(car=2),
         dict(truck=3),
@@ -304,8 +313,8 @@ test_pipeline = [
     dict(type="Reformat"),
 ]
 
-train_anno = "/data/Datasets/nuScenes/infos_train_10sweeps_withvelo.pkl"
-val_anno = "/data/Datasets/nuScenes/infos_val_10sweeps_withvelo.pkl"
+train_anno = "../nuscenes_data/infos_train_10sweeps_withvelo.pkl"
+val_anno = "../nuscenes_data/infos_val_10sweeps_withvelo.pkl"
 test_anno = None
 
 data = dict(
