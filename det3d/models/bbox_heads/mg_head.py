@@ -1075,3 +1075,122 @@ class MultiGroupHead(nn.Module):
             predictions_dicts.append(predictions_dict)
 
         return predictions_dicts
+    
+    
+    def get_guided_anchors(self, batch_size, batch_box_preds, batch_cls_preds, batch_dir_preds, batch_anchors_mask, gt_bboxes, thr=.1):
+     
+        new_boxes = []
+        if gt_bboxes is None:
+            gt_bboxes = [None] * batch_size
+
+        for box_preds, cls_preds, dir_preds, a_mask, gt_boxes in zip(
+                batch_box_preds, batch_cls_preds, batch_dir_preds, batch_anchors_mask, gt_bboxes
+        ):
+            if a_mask is not None:
+                box_preds = box_preds[a_mask]
+                cls_preds = cls_preds[a_mask]
+                dir_preds = dir_preds[a_mask]
+
+            #print("clas preds: ", cls_preds.shape)
+            if self.use_direction_classifier:
+                dir_labels = torch.max(dir_preds, dim=-1)[1]
+
+#             if self.use_sigmoid_score:
+#                 total_scores = torch.sigmoid(cls_preds)
+#             else:
+#                 total_scores = F.softmax(cls_preds, dim=-1)[..., 1:]
+
+            if self.encode_background_as_zeros:
+                # this don't support softmax
+                assert self.use_sigmoid_score is True
+                total_scores = torch.sigmoid(cls_preds)
+            else:
+                # encode background as first element in one-hot vector
+                if self.use_sigmoid_score:
+                    total_scores = torch.sigmoid(cls_preds)[..., 1:]
+                else:
+                    total_scores = F.softmax(cls_preds, dim=-1)[..., 1:]
+
+            #print("tot scores: ", total_scores.shape)
+            
+            #top_scores = torch.squeeze(total_scores, -1)
+
+            top_scores, top_labels = torch.max(total_scores, dim=-1)
+            selected = top_scores > thr
+
+            box_preds = box_preds[selected]
+
+            if self.use_direction_classifier:
+                dir_labels = dir_labels[selected]
+                opp_labels = (box_preds[..., -1] > 0) ^ dir_labels.bool()
+                box_preds[opp_labels, -1] += np.pi
+
+            # add ground-truth
+            if gt_boxes is not None:
+                box_preds = torch.cat([gt_boxes, box_preds],0)
+
+            new_boxes.append(box_preds)
+        return new_boxes
+    
+########################################################
+    
+    def gg(self, example, preds_dicts):
+        rets = []
+        for task_id, preds_dict in enumerate(preds_dicts):
+
+            batch_anchors = example["anchors"]
+            batch_size = batch_anchors[task_id].shape[0]
+
+            batch_task_gt_bboxes = example["reg_targets"][task_id]
+            
+                                           
+            batch_task_anchors = example["anchors"][task_id].view(
+                batch_size, -1, self.box_n_dim
+            )
+
+            if "anchors_mask" not in example:
+                batch_anchors_mask = [None] * batch_size
+            else:
+                batch_anchors_mask = example["anchors_mask"][task_id].view(
+                    batch_size, -1
+                )
+
+            batch_box_preds = preds_dict["box_preds"]
+            batch_cls_preds = preds_dict["cls_preds"]
+
+            if self.bev_only:
+                box_ndim = self.box_n_dim - 2
+            else:
+                box_ndim = self.box_n_dim
+
+            batch_box_preds = batch_box_preds.view(batch_size, -1, box_ndim)
+
+            num_class_with_bg = self.num_classes[task_id]
+
+            if not self.encode_background_as_zeros:
+                num_class_with_bg = self.num_classes[task_id] + 1
+
+            batch_cls_preds = batch_cls_preds.view(batch_size, -1, num_class_with_bg)
+
+            batch_reg_preds = self.box_coder.decode_torch(
+                batch_box_preds[:, :, : self.box_coder.code_size], batch_task_anchors
+            )
+
+            if self.use_direction_classifier:
+                batch_dir_preds = preds_dict["dir_cls_preds"]
+                batch_dir_preds = batch_dir_preds.view(batch_size, -1, 2)
+            else:
+                batch_dir_preds = [None] * batch_size
+
+            rets.append(
+                self.get_guided_anchors(
+                    batch_size,
+                    batch_reg_preds,
+                    batch_cls_preds,
+                    batch_dir_preds,
+                    batch_anchors_mask,
+                    batch_task_gt_bboxes,
+                    0.1
+                )
+            )
+        return rets

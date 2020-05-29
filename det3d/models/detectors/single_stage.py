@@ -13,6 +13,7 @@ class SingleStageDetector(BaseDetector):
         backbone,
         neck=None,
         bbox_head=None,
+        extra_head=None,
         train_cfg=None,
         test_cfg=None,
         pretrained=None,
@@ -23,6 +24,7 @@ class SingleStageDetector(BaseDetector):
         if neck is not None:
             self.neck = builder.build_neck(neck)
         self.bbox_head = builder.build_head(bbox_head)
+        self.extra_head = builder.build_extra_head(extra_head)
         self.train_cfg = train_cfg
         self.test_cfg = test_cfg
 

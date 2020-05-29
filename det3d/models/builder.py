@@ -10,6 +10,7 @@ from .registry import (
     READERS,
     ROI_EXTRACTORS,
     SHARED_HEADS,
+    EXTRA_HEAD,
 )
 
 
@@ -43,6 +44,9 @@ def build_shared_head(cfg):
 
 def build_head(cfg):
     return build(cfg, HEADS)
+
+def build_extra_head(cfg):
+    return build(cfg, EXTRA_HEAD)
 
 
 def build_loss(cfg):
