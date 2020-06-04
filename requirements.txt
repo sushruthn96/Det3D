@@ -20,3 +20,5 @@ pycocotools
 imagecorruptions                                                                                          
 objgraph                                                                                                  
 lyft_dataset_sdk
+
+pyyaml
