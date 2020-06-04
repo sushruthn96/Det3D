@@ -68,6 +68,13 @@ $ cd Det3D
 $ python setup.py build develop
 ```
 
+#### Install required parts of MMDET
+
+```bash
+$ cd mmdet/ops/points_op
+$ python setup.py build_ext --inplace
+```
+
 ### Common Installation Issues
 
 #### ModuleNotFoundError: No module named 'det3d.ops.nms.nms' when installing det3d

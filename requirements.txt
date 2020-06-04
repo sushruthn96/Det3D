@@ -22,3 +22,5 @@ objgraph
 lyft_dataset_sdk
 
 pyyaml
+
+requests
