@@ -51,14 +51,14 @@ $ cd nuscenes
 $ python setup.py install
 ```
 
-### Install Det3D
+### Install Structure Aware Det3D
 
 The installation should be under the gpu environment.
 
-#### Clone the Det3D repository
+#### Clone this repository
 
 ```bash
-$ git clone https://github.com/poodarchu/Det3D.git
+$ git clone https://github.com/sushruthn96/Det3D.git
 $ cd Det3D
 ```
 
