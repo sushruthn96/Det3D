@@ -145,8 +145,16 @@ model = dict(
         norm_cfg=norm_cfg,
     ),
     backbone=dict(
-        type="SpMiddleResNetFHD", num_input_features=5, ds_factor=8, norm_cfg=norm_cfg,
+                type='SpMiddleFHD', ds_factor=8, 
+        output_shape=[40, 1600, 1408],
+        num_input_features=5,
+        num_hidden_features=64*5
     ),
+
+#     backbone=dict(
+#             type='SpMiddleResNetFHD',  
+#     num_input_features=5,ds_factor=8, norm_cfg=norm_cfg,
+#     ),
     neck=dict(
         type="RPN",
         layer_nums=[5, 5],
@@ -154,7 +162,7 @@ model = dict(
         ds_num_filters=[128, 256],
         us_layer_strides=[1, 2],
         us_num_filters=[256, 256],
-        num_input_features=256,
+        num_input_features=384,
         norm_cfg=norm_cfg,
         logger=logging.getLogger("RPN"),
     ),
@@ -225,12 +233,12 @@ test_cfg = dict(
 # dataset settings
 dataset_type = "NuScenesDataset"
 n_sweeps = 10
-data_root = "../nuscenes_data"
+data_root = "../../nuscenes_data/"
 
 db_sampler = dict(
     type="GT-AUG",
     enable=False,
-    db_info_path="../nuscenes_data/dbinfos_train_10sweeps_withvelo.pkl",
+    db_info_path="../../nuscenes_data/dbinfos_train_10sweeps_withvelo.pkl",
     sample_groups=[
         dict(car=2),
         dict(truck=3),
@@ -313,9 +321,9 @@ test_pipeline = [
     dict(type="Reformat"),
 ]
 
-train_anno = "../nuscenes_data/infos_train_10sweeps_withvelo.pkl"
-val_anno = "../nuscenes_data/infos_val_10sweeps_withvelo.pkl"
-test_anno = None
+train_anno = "../../nuscenes_data/infos_train_10sweeps_withvelo.pkl"
+val_anno = "../../nuscenes_data/infos_val_10sweeps_withvelo.pkl"
+test_anno = "../../nuscenes_data/infos_val_10sweeps_withvelo.pkl"
 
 data = dict(
     samples_per_gpu=4,
@@ -373,7 +381,7 @@ log_config = dict(
 )
 # yapf:enable
 # runtime settings
-total_epochs = 20
+total_epochs = 5
 device_ids = range(8)
 dist_params = dict(backend="nccl", init_method="env://")
 log_level = "INFO"

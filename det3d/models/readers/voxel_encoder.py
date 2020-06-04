@@ -105,6 +105,7 @@ class VoxelFeatureExtractor(nn.Module):
         x *= mask
         # x: [concated_num_points, num_voxel_size, 128]
         voxelwise = torch.max(x, dim=1)[0]
+        
         return voxelwise
 
 
@@ -207,7 +208,7 @@ class VoxelFeatureExtractorV3(nn.Module):
         points_mean = features[:, :, : self.num_input_features].sum(
             dim=1, keepdim=False
         ) / num_voxels.type_as(features).view(-1, 1)
-
+        
         return points_mean.contiguous()
 
 

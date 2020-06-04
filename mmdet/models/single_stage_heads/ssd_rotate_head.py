@@ -371,7 +371,9 @@ def bilinear_interpolate_torch_gridsample(image, samples_x, samples_y):
     samples[:, :, :, 0] = (samples[:, :, :, 0] / (W - 1))  # normalize to between  0 and 1
     samples[:, :, :, 1] = (samples[:, :, :, 1] / (H - 1))  # normalize to between  0 and 1
     samples = samples * 2 - 1  # normalize to between -1 and 1
-
+    print("bilinear_interpolate_torch_gridsample")
+    print(image.shape)
+    print(samples.shape)
     return torch.nn.functional.grid_sample(image, samples)
 
 class PSWarpHead(nn.Module):
@@ -391,6 +393,10 @@ class PSWarpHead(nn.Module):
 
     def forward(self, x, guided_anchors, is_test=False):
         x = self.convs(x)
+        print("X shape PSwarp")
+        print(x.shape)
+        print("guided anchors shape")
+        print(guided_anchors[0].shape)
         bbox_scores = list()
         for i, ga in enumerate(guided_anchors):
             if len(ga) == 0:
@@ -399,7 +405,11 @@ class PSWarpHead(nn.Module):
             (xs, ys) = self.gen_grid_fn(ga[:, [0, 1, 3, 4, 6]])
             im = x[i]
             out = bilinear_interpolate_torch_gridsample(im, xs, ys)
+
             score = torch.mean(out, 0).view(-1)
+#             print("scores------------")
+#             print(score)
+#             print(score.shape)
             bbox_scores.append(score)
 
         if is_test:
@@ -411,7 +421,8 @@ class PSWarpHead(nn.Module):
     def loss(self, cls_preds, gt_bboxes, gt_labels, anchors, cfg):
 
         batch_size = len(anchors)
-
+        print("loss ablation------")
+#         print(gt_bboxes.shape)
         labels, targets, ious = multi_apply(create_target_torch,
                                             anchors, gt_bboxes,
                                             (None,) * batch_size, gt_labels,
@@ -419,7 +430,8 @@ class PSWarpHead(nn.Module):
                                             box_encoding_fn = second_box_encode,
                                             matched_threshold=cfg.assigner.pos_iou_thr,
                                             unmatched_threshold=cfg.assigner.neg_iou_thr)
-
+        print(len(labels))
+        print(labels[0].shape)
         labels = torch.cat(labels,).unsqueeze_(1)
 
         # soft_label = torch.clamp(2 * ious - 0.5, 0, 1)

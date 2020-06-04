@@ -16,6 +16,9 @@ from torch.nn.modules.batchnorm import _BatchNorm
 from .. import builder
 from ..losses import accuracy
 from ..registry import HEADS
+from det3d.models.backbones.scn import SpMiddleFHD
+from mmdet.ops import pts_in_boxes3d
+from mmdet.core.loss.losses import weighted_smoothl1, weighted_sigmoid_focal_loss
 
 
 def one_hot_f(tensor, depth, dim=-1, on_value=1.0, dtype=torch.float32):
@@ -182,6 +185,58 @@ def create_loss(
     )  # [N, M]
 
     return loc_losses, cls_losses
+
+
+
+def build_aux_target(nxyz, gt_boxes3d, enlarge=1.0):
+    center_offsets = list()
+    pts_labels = list()
+    for i in range(len(gt_boxes3d)):
+        boxes3d = gt_boxes3d[i].cpu()
+        idx = torch.nonzero(nxyz[:, 0] == i).view(-1)
+        new_xyz = nxyz[idx, 1:].cpu()
+        boxes3d[:, 3:6] *= enlarge
+        pts_in_flag, center_offset = pts_in_boxes3d(new_xyz, boxes3d)
+        pts_label = pts_in_flag.max(0)[0].byte()
+        # import mayavi.mlab as mlab
+        # from mmdet.datasets.kitti_utils import draw_lidar, draw_gt_boxes3d
+        # f = draw_lidar((new_xyz).numpy(), show=False)
+        # pts = new_xyz[pts_label].numpy()
+        # mlab.points3d(pts[:, 0], pts[:, 1], pts[:, 2], color=(1, 1, 1), scale_factor=0.25, figure=f)
+        # f = draw_gt_boxes3d(center_to_corner_box3d(boxes3d.numpy()), f, draw_text=False, show=True)
+        pts_labels.append(pts_label)
+        center_offsets.append(center_offset)
+    center_offsets = torch.cat(center_offsets).cuda()
+    pts_labels = torch.cat(pts_labels).cuda()
+    return pts_labels, center_offsets
+
+def aux_loss(points, point_cls, point_reg, gt_bboxes):
+    N = len(gt_bboxes)
+    pts_labels, center_targets = build_aux_target(points[:,:4], gt_bboxes)
+    rpn_cls_target = pts_labels.float()
+    pos = (pts_labels > 0).float()
+    neg = (pts_labels == 0).float()
+
+    pos_normalizer = pos.sum()
+    pos_normalizer = torch.clamp(pos_normalizer, min=1.0)
+
+    cls_weights = pos + neg
+    cls_weights = cls_weights / pos_normalizer
+
+    reg_weights = pos
+    reg_weights = reg_weights / pos_normalizer
+
+    aux_loss_cls = weighted_sigmoid_focal_loss(point_cls.view(-1), rpn_cls_target, weight=cls_weights, avg_factor=1.)
+    aux_loss_cls /= N
+
+    aux_loss_reg = weighted_smoothl1(point_reg, center_targets, beta=1 / 9., weight=reg_weights[..., None], avg_factor=1.)
+    aux_loss_reg /= N
+
+    return dict(
+        aux_loss_cls = [aux_loss_cls],
+#         aux_loss_reg = [aux_loss_reg],
+    )
+
 
 
 class LossNormType(Enum):
@@ -569,23 +624,29 @@ class MultiGroupHead(nn.Module):
             raise ValueError(f"unknown loss norm type. available: {list(LossNormType)}")
         return cls_weights, reg_weights, cared
 
-    def loss(self, example, preds_dicts, **kwargs):
+    def loss(self, example, preds_dicts, point_misc, **kwargs):
 
         voxels = example["voxels"]
         num_points = example["num_points"]
         coors = example["coordinates"]
         batch_anchors = example["anchors"]
         batch_size_device = batch_anchors[0].shape[0]
-
         rets = []
+        gt_boxes = []
+        for batch_size in range(len(example["annos"])):
+            gt_box = example["annos"][batch_size]["gt_boxes"][0][:,:7]
+            for i in range(1, len(example["annos"][batch_size]["gt_boxes"])):
+                gt_box = np.vstack((gt_box, example["annos"][batch_size]["gt_boxes"][i][:,:7]))
+            gt_box = torch.Tensor(gt_box)
+            gt_boxes.append(gt_box)
+        aux_loss1 = aux_loss(*point_misc, gt_bboxes=gt_boxes)
+        aux_loss1["aux_loss_cls"] = aux_loss1["aux_loss_cls"]*1
+#         aux_loss1["aux_loss_reg"] = aux_loss1["aux_loss_reg"]*2
         for task_id, preds_dict in enumerate(preds_dicts):
             losses = dict()
-
             num_class = self.num_classes[task_id]
-
             box_preds = preds_dict["box_preds"]
             cls_preds = preds_dict["cls_preds"]
-
             labels = example["labels"][task_id]
             if kwargs.get("mode", False):
                 reg_targets = example["reg_targets"][task_id][:, :, [0, 1, 3, 4, 6]]
@@ -622,8 +683,8 @@ class MultiGroupHead(nn.Module):
             cls_neg_loss /= self.loss_norm["neg_cls_weight"]
             cls_loss_reduced = cls_loss.sum() / batch_size_device
             cls_loss_reduced *= self.loss_cls._loss_weight
-
-            loss = loc_loss_reduced + cls_loss_reduced
+            loss = loc_loss_reduced + cls_loss_reduced 
+           
 
             if self.use_direction_classifier:
                 dir_targets = get_direction_target(
@@ -637,9 +698,6 @@ class MultiGroupHead(nn.Module):
                 dir_loss = self.loss_aux(dir_logits, dir_targets, weights=weights)
                 dir_loss = dir_loss.sum() / batch_size_device
                 loss += dir_loss * self.loss_aux._loss_weight
-
-                # losses['loss_aux'] = dir_loss
-
             loc_loss_elem = [
                 loc_loss[:, :, i].sum() / batch_size_device
                 for i in range(loc_loss.shape[-1])
@@ -657,6 +715,7 @@ class MultiGroupHead(nn.Module):
                 "num_pos": (labels > 0)[0].sum(),
                 "num_neg": (labels == 0)[0].sum(),
             }
+            
 
             # self.rpn_acc.clear()
             # losses['acc'] = self.rpn_acc(
@@ -680,10 +739,18 @@ class MultiGroupHead(nn.Module):
         """convert batch-key to key-batch
         """
         rets_merged = defaultdict(list)
+#         rets.update(aux_loss1)
         for ret in rets:
             for k, v in ret.items():
                 rets_merged[k].append(v)
-
+#         print(rets_merged)
+#         print("-------------")
+#         print(rets_merged["loss"])
+        rets_merged["loss"].append(aux_loss1["aux_loss_cls"][0])
+#         rets_merged["loss"].append(aux_loss1["aux_loss_reg"][0])
+        rets_merged.update(aux_loss1)
+#         print(rets_merged["loss"])
+#         print("RETS MERGED",rets_merged)
         return rets_merged
 
     def predict(self, example, preds_dicts, test_cfg, **kwargs):
@@ -1075,122 +1142,3 @@ class MultiGroupHead(nn.Module):
             predictions_dicts.append(predictions_dict)
 
         return predictions_dicts
-    
-    
-    def get_guided_anchors(self, batch_size, batch_box_preds, batch_cls_preds, batch_dir_preds, batch_anchors_mask, gt_bboxes, thr=.1):
-     
-        new_boxes = []
-        if gt_bboxes is None:
-            gt_bboxes = [None] * batch_size
-
-        for box_preds, cls_preds, dir_preds, a_mask, gt_boxes in zip(
-                batch_box_preds, batch_cls_preds, batch_dir_preds, batch_anchors_mask, gt_bboxes
-        ):
-            if a_mask is not None:
-                box_preds = box_preds[a_mask]
-                cls_preds = cls_preds[a_mask]
-                dir_preds = dir_preds[a_mask]
-
-            #print("clas preds: ", cls_preds.shape)
-            if self.use_direction_classifier:
-                dir_labels = torch.max(dir_preds, dim=-1)[1]
-
-#             if self.use_sigmoid_score:
-#                 total_scores = torch.sigmoid(cls_preds)
-#             else:
-#                 total_scores = F.softmax(cls_preds, dim=-1)[..., 1:]
-
-            if self.encode_background_as_zeros:
-                # this don't support softmax
-                assert self.use_sigmoid_score is True
-                total_scores = torch.sigmoid(cls_preds)
-            else:
-                # encode background as first element in one-hot vector
-                if self.use_sigmoid_score:
-                    total_scores = torch.sigmoid(cls_preds)[..., 1:]
-                else:
-                    total_scores = F.softmax(cls_preds, dim=-1)[..., 1:]
-
-            #print("tot scores: ", total_scores.shape)
-            
-            #top_scores = torch.squeeze(total_scores, -1)
-
-            top_scores, top_labels = torch.max(total_scores, dim=-1)
-            selected = top_scores > thr
-
-            box_preds = box_preds[selected]
-
-            if self.use_direction_classifier:
-                dir_labels = dir_labels[selected]
-                opp_labels = (box_preds[..., -1] > 0) ^ dir_labels.bool()
-                box_preds[opp_labels, -1] += np.pi
-
-            # add ground-truth
-            if gt_boxes is not None:
-                box_preds = torch.cat([gt_boxes, box_preds],0)
-
-            new_boxes.append(box_preds)
-        return new_boxes
-    
-########################################################
-    
-    def gg(self, example, preds_dicts):
-        rets = []
-        for task_id, preds_dict in enumerate(preds_dicts):
-
-            batch_anchors = example["anchors"]
-            batch_size = batch_anchors[task_id].shape[0]
-
-            batch_task_gt_bboxes = example["reg_targets"][task_id]
-            
-                                           
-            batch_task_anchors = example["anchors"][task_id].view(
-                batch_size, -1, self.box_n_dim
-            )
-
-            if "anchors_mask" not in example:
-                batch_anchors_mask = [None] * batch_size
-            else:
-                batch_anchors_mask = example["anchors_mask"][task_id].view(
-                    batch_size, -1
-                )
-
-            batch_box_preds = preds_dict["box_preds"]
-            batch_cls_preds = preds_dict["cls_preds"]
-
-            if self.bev_only:
-                box_ndim = self.box_n_dim - 2
-            else:
-                box_ndim = self.box_n_dim
-
-            batch_box_preds = batch_box_preds.view(batch_size, -1, box_ndim)
-
-            num_class_with_bg = self.num_classes[task_id]
-
-            if not self.encode_background_as_zeros:
-                num_class_with_bg = self.num_classes[task_id] + 1
-
-            batch_cls_preds = batch_cls_preds.view(batch_size, -1, num_class_with_bg)
-
-            batch_reg_preds = self.box_coder.decode_torch(
-                batch_box_preds[:, :, : self.box_coder.code_size], batch_task_anchors
-            )
-
-            if self.use_direction_classifier:
-                batch_dir_preds = preds_dict["dir_cls_preds"]
-                batch_dir_preds = batch_dir_preds.view(batch_size, -1, 2)
-            else:
-                batch_dir_preds = [None] * batch_size
-
-            rets.append(
-                self.get_guided_anchors(
-                    batch_size,
-                    batch_reg_preds,
-                    batch_cls_preds,
-                    batch_dir_preds,
-                    batch_anchors_mask,
-                    batch_task_gt_bboxes,
-                    0.1
-                )
-            )
-        return rets

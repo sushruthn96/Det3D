@@ -190,12 +190,8 @@ class WeightedSmoothL1Loss(nn.Module):
         loss: a float tensor of shape [batch_size, num_anchors] tensor
             representing the value of the loss function.
         """
-        # FIX NaN TARGETS 
-        target_tensor = torch.where(
-            torch.isnan(target_tensor), prediction_tensor, target_tensor
-        )
+        target_tensor = torch.where(torch.isnan(target_tensor), prediction_tensor, target_tensor)
         diff = prediction_tensor - target_tensor
-        
         if self._code_weights is not None:
             # code_weights = self._code_weights.type_as(prediction_tensor).to(diff.device)
             diff = self._code_weights.view(1, 1, -1).to(diff.device) * diff

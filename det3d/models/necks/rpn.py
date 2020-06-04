@@ -150,6 +150,7 @@ class RPN(nn.Module):
     def forward(self, x):
         ups = []
         for i in range(len(self.blocks)):
+#             print("rpn x", x.size())
             x = self.blocks[i](x)
             if i - self._upsample_start_idx >= 0:
                 ups.append(self.deblocks[i - self._upsample_start_idx](x))

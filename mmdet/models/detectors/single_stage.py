@@ -81,8 +81,11 @@ class SingleStageDetector(BaseDetector, RPNTestMixin, BBoxTestMixin,
 
         vx = self.backbone(ret['voxels'], ret['num_points'])
         (x, conv6), point_misc = self.neck(vx, ret['coordinates'], batch_size)
+        
         print("x and conv6: ", x.shape, conv6.shape)
-
+        print(point_misc[0].shape)
+        print(point_misc[1].shape)
+        print(point_misc[2].shape)
         losses = dict()
 
         aux_loss = self.neck.aux_loss(*point_misc, gt_bboxes=ret['gt_bboxes'])
@@ -91,20 +94,27 @@ class SingleStageDetector(BaseDetector, RPNTestMixin, BBoxTestMixin,
         # RPN forward and loss
         if self.with_rpn:
             rpn_outs = self.rpn_head(x)
-            print("rpn outs: ", len(rpn_outs))
-            print(rpn_outs[0].cpu().shape)
+#             print("rpn outs: ", len(rpn_outs))
+#             print(rpn_outs[0].cpu().shape)
             rpn_loss_inputs = rpn_outs + (ret['gt_bboxes'], ret['gt_labels'], ret['anchors'], ret['anchors_mask'], self.train_cfg.rpn)
             rpn_losses = self.rpn_head.loss(*rpn_loss_inputs)
             losses.update(rpn_losses)
             guided_anchors = self.rpn_head.get_guided_anchors(*rpn_outs, ret['anchors'], ret['anchors_mask'], ret['gt_bboxes'], thr=0.1)
             
-            print("guided", guided_anchors[0].shape)
+#             print("guided", guided_anchors[0].shape)
         else:
             raise NotImplementedError
 
         # bbox head forward and loss
         if self.extra_head:
             bbox_score = self.extra_head(conv6, guided_anchors)
+            print("GT info -----")
+            print(len(bbox_score))
+            print(bbox_score[0].shape)
+            print(len(ret['gt_labels']))
+            print(ret['gt_labels'][0].shape)
+            print(len(ret['gt_bboxes']))
+            print(ret['gt_bboxes'][0].shape)
             refine_loss_inputs = (bbox_score, ret['gt_bboxes'], ret['gt_labels'], guided_anchors, self.train_cfg.extra)
             refine_losses = self.extra_head.loss(*refine_loss_inputs)
             losses.update(refine_losses)

@@ -108,7 +108,7 @@ def parse_args():
         choices=["proposal", "proposal_fast", "bbox", "segm", "keypoints"],
         help="eval types",
     )
-    parser.add_argument("--show", action="store_true", help="show results")
+    parser.add_argument("--`", action="store_true", help="show results")
     parser.add_argument("--txt_result", action="store_true", help="save txt")
     parser.add_argument("--tmpdir", help="tmp dir for writing some results")
     parser.add_argument(

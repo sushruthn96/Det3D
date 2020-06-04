@@ -18,7 +18,7 @@ class SpMiddleFHD(nn.Module):
 
         super(SpMiddleFHD, self).__init__()
 
-        print(output_shape)
+        #print(output_shape)
         self.sparse_shape = output_shape
 
         self.backbone = VxNet(num_input_features)
@@ -39,13 +39,16 @@ class SpMiddleFHD(nn.Module):
         return block, planes
 
     def build_aux_target(self, nxyz, gt_boxes3d, enlarge=1.0):
+        print("build_aux_target --------")
+        print(nxyz.shape)
+        print(gt_boxes3d[0].shape)
         center_offsets = list()
         pts_labels = list()
         for i in range(len(gt_boxes3d)):
             boxes3d = gt_boxes3d[i].cpu()
             idx = torch.nonzero(nxyz[:, 0] == i).view(-1)
             new_xyz = nxyz[idx, 1:].cpu()
-
+            print(new_xyz)
             boxes3d[:, 3:6] *= enlarge
 
             pts_in_flag, center_offset = pts_in_boxes3d(new_xyz, boxes3d)
@@ -199,7 +202,7 @@ class VxNet(nn.Module):
 
 
     def forward(self, x, points_mean, is_test=False):
-        print("forward", x.dense().size())
+        #print("forward", x.dense().size())
 
         x = self.conv0(x)
         x = self.down0(x)  # sp

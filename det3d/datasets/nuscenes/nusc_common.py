@@ -379,6 +379,8 @@ def _fill_trainval_infos(nusc, train_scenes, val_scenes, test=False, nsweeps=10)
     chan = "LIDAR_TOP"  # The reference channel of the current sample_rec that the point clouds are mapped to.
 
     for sample in tqdm(nusc.sample):
+        if sample["scene_token"] not in train_scenes and sample["scene_token"] not in val_scenes:
+            continue
         """ Manual save info["sweeps"] """
         # Get reference pose and timestamp
         # ref_chan == "LIDAR_TOP"
@@ -533,7 +535,7 @@ def _fill_trainval_infos(nusc, train_scenes, val_scenes, test=False, nsweeps=10)
 
         if sample["scene_token"] in train_scenes:
             train_nusc_infos.append(info)
-        else:
+        elif sample["scene_token"] in val_scenes:
             val_nusc_infos.append(info)
 
     return train_nusc_infos, val_nusc_infos
@@ -636,13 +638,14 @@ def create_nuscenes_infos(root_path, version="v1.0-trainval", nsweeps=10):
         val_scenes = splits.mini_val
     else:
         raise ValueError("unknown")
+        
     test = "test" in version
     root_path = Path(root_path)
     # filter exist scenes. you may only download part of dataset.
     available_scenes = _get_available_scenes(nusc)
     available_scene_names = [s["name"] for s in available_scenes]
     train_scenes = list(filter(lambda x: x in available_scene_names, train_scenes))
-    val_scenes = list(filter(lambda x: x in available_scene_names, val_scenes))
+    val_scenes = list(filter(lambda x: x in available_scene_names, val_scenes))   
     train_scenes = set(
         [
             available_scenes[available_scene_names.index(s)]["token"]
@@ -652,6 +655,7 @@ def create_nuscenes_infos(root_path, version="v1.0-trainval", nsweeps=10):
     val_scenes = set(
         [available_scenes[available_scene_names.index(s)]["token"] for s in val_scenes]
     )
+    
     if test:
         print(f"test scene: {len(train_scenes)}")
     else:
@@ -697,6 +701,27 @@ def eval_main(nusc, eval_version, res_path, eval_set, output_dir):
     # nusc = NuScenes(version=version, dataroot=str(root_path), verbose=True)
     cfg = config_factory(eval_version)
 
+    if nusc.version == "v1.0-trainval":
+        train_scenes = splits.train
+        # random.shuffle(train_scenes)
+        # train_scenes = train_scenes[:int(len(train_scenes)*0.2)]
+        val_scenes = splits.val
+    elif nusc.version == "v1.0-test":
+        train_scenes = splits.test
+        val_scenes = []
+    elif nusc.version == "v1.0-mini":
+        train_scenes = splits.mini_train
+        val_scenes = splits.mini_val
+    else:
+        raise ValueError("unknown")
+
+    available_scenes = _get_available_scenes(nusc)
+    available_scene_names = [s["name"] for s in available_scenes]
+    val_scenes = list(filter(lambda x: x in available_scene_names, val_scenes))
+    val_scenes = set(
+        [available_scenes[available_scene_names.index(s)]["token"] for s in val_scenes]
+    )
+
     nusc_eval = NuScenesEval(
         nusc,
         config=cfg,
@@ -704,5 +729,6 @@ def eval_main(nusc, eval_version, res_path, eval_set, output_dir):
         eval_set=eval_set,
         output_dir=output_dir,
         verbose=True,
+        val_scenes=val_scenes,
     )
     metrics_summary = nusc_eval.main(plot_examples=10,)

@@ -97,7 +97,13 @@ class TextLoggerHook(LoggerHook):
                     val = "{:.4f}".format(val)
 
                 if isinstance(val, list):
-                    log_items.append(
+#                     print("IDX AND VAL, NAME", idx, val, name)
+                    if name=="aux_loss_cls" or name=="aux_loss_reg":
+                        if idx == 0:
+                                log_items.append(
+                        "{}: {}".format(name, self._convert_to_precision4(val[idx])))
+                    else: 
+                        log_items.append(
                         "{}: {}".format(name, self._convert_to_precision4(val[idx]))
                     )
                 else:

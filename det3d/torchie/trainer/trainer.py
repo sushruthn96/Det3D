@@ -410,7 +410,6 @@ class Trainer(object):
             self.outputs = outputs
             self.call_hook("after_train_iter")
             self._iter += 1
-
         self.call_hook("after_train_epoch")
         self._epoch += 1
 
@@ -475,7 +474,7 @@ class Trainer(object):
     def resume(self, checkpoint, resume_optimizer=True, map_location="default"):
         if map_location == "default":
             checkpoint = self.load_checkpoint(
-                checkpoint, map_location=torch.cuda.current_device()
+                checkpoint, map_location=torch.device(torch.cuda.current_device())
             )
         else:
             checkpoint = self.load_checkpoint(checkpoint, map_location=map_location)
