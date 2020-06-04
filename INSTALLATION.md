@@ -65,14 +65,16 @@ $ cd Det3D
 #### Install Det3D
 
 ```bash
+$ pip install -r requirements.txt
 $ python setup.py build develop
 ```
 
 #### Install required parts of MMDET
 
 ```bash
-$ cd mmdet/ops/points_op
-$ python setup.py build_ext --inplace
+$ cd mmdet/ops/points_op; python3 setup.py build_ext --inplace
+$ cd mmdet/ops/pointnet2; python3 setup.py build_ext --inplace
+$ cd mmdet/ops/iou3d; python3 setup.py build_ext --inplace
 ```
 
 ### Common Installation Issues
@@ -84,4 +86,3 @@ Run `python setup.py build develop` again.
 #### "values of 'package_data' dict" must be a list of strings (got '*.json') when installing nuscenes-devikit
 
 Use `setuptools 39.1.0 `
-
