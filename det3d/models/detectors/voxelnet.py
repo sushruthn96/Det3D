@@ -22,13 +22,9 @@ class VoxelNet(SingleStageDetector):
 
     def extract_feat(self, data):
         input_features = self.reader(data["features"], data["num_voxels"])
-#         print("input features in voxelnet.py", input_features[0])
         x, points = self.backbone(input_features, data["coors"], data["batch_size"], data["input_shape"])
-#         print("POINTS[0]", points[0][:5, :])
 #         x = self.backbone(input_features, data["coors"], data["batch_size"], data["input_shape"])
-        
-#         points[0] = points[0][:4]
-        
+                
 #         x = self.backbone(
 #             input_features, data["coors"], data["batch_size"], data["input_shape"]
 #         )
@@ -37,7 +33,6 @@ class VoxelNet(SingleStageDetector):
         return x, points
 
     def forward(self, example, return_loss=True, **kwargs):
-#         print("KWARGS IN VOXELNET", kwargs)
         voxels = example["voxels"]
         coordinates = example["coordinates"]
         num_points_in_voxel = example["num_points"]
@@ -64,7 +59,6 @@ class VoxelNet(SingleStageDetector):
         )
 
         x, points = self.extract_feat(data)
-#         print("POINTS TUPLE", points)
         preds = self.bbox_head(x)
 
         if return_loss:

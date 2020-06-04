@@ -101,9 +101,6 @@ class SpMiddleFHD(nn.Module):
                  ):
 
         super(SpMiddleFHD, self).__init__()
-
-#         print(output_shape)
-#         self.sparse_shape = output_shape
         self.sparse_shape = None
 
         self.backbone1 = VxNet(num_input_features)
@@ -195,26 +192,19 @@ class SpMiddleFHD(nn.Module):
     def forward(self, voxel_features, coors, batch_size, input_shape, is_test=False):
 
         points_mean = torch.zeros_like(voxel_features)
-#         points_mean = torch.zeros((voxel_features.shape[0],4))
         points_mean[:, 0] = coors[:, 0]
         
         points_mean[:, 1:] = voxel_features[:, :4]
-#         points_mean = points_mean.contiguous()
         
         is_test = False 
         coors = coors.int()
         self.sparse_shape = np.array(input_shape[::-1]) + [1, 0, 0]
-#         print("coors, sparse, batch size",coors.shape, self.sparse_shape, batch_size)
         x = spconv.SparseConvTensor(voxel_features, coors, self.sparse_shape, batch_size)
-#         print("voxel features shape", voxel_features.shape)
         x, point_misc = self.backbone1(x, points_mean, is_test)
-#         print("voxel features shape", voxel_features.shape)
   
         x = x.dense()
-#         print("X shape beofre reshape!",x.shape)
         N, C, D, H, W = x.shape
         x = x.view(N, C * D, H, W)
-#         print("X shape!",x.shape)
 #         x = self.fcn(x)
 
         if is_test:
@@ -259,13 +249,6 @@ def stride_conv(in_channels, out_channels, indice_key=None):
             nn.BatchNorm1d(out_channels, eps=1e-3, momentum=0.01),
             nn.ReLU()
     )
-
-# def tensor2points(tensor, offset=(-50.4, -50.4, -5.0), voxel_size=(.05, .05, .1)):
-#     indices = tensor.indices.float()
-#     offset = torch.Tensor(offset).to(indices.device)
-#     voxel_size = torch.Tensor(voxel_size).to(indices.device)
-#     indices[:, 1:] = indices[:, [3, 2, 1]] * voxel_size + offset + .5 * voxel_size
-#     return tensor.features, indices
 
 def nearest_neighbor_interpolate(unknown, known, known_feats):
     """
@@ -312,42 +295,31 @@ class VxNet(nn.Module):
 
     def forward(self, x, points_mean, is_test=False):
         
-#         print("hello")
         x = self.conv0(x)
         x = self.down0(x)  # sp
         x = self.conv1(x)  # 2x sub
-#         print("vxnet")
         if not is_test:
             vx_feat, vx_nxyz = tensor2points(x, voxel_size=(.2, .2, .4))
             p1 = nearest_neighbor_interpolate(points_mean[:,:-1].contiguous(), vx_nxyz, vx_feat)
-#             print("vxnet")
 
-#         print("X DENSE SHAPE", x.dense().shape)  [:,:-1].contiguous()
         x = self.down1(x)
         x = self.conv2(x)
 
         if not is_test:
             vx_feat, vx_nxyz = tensor2points(x, voxel_size=(.4, .4, .8))
             p2 = nearest_neighbor_interpolate(points_mean[:,:-1].contiguous(), vx_nxyz, vx_feat)
-#             print("vxnet")
 
         x = self.down2(x)
         x = self.conv3(x)
 
         if not is_test:
             vx_feat, vx_nxyz = tensor2points(x, voxel_size=(.8, .8, 1.6))
-#             print("VX_NXYZ, POINTS_MEAN", vx_nxyz[0:2, :], points_mean[0:2, :])
             p3 = nearest_neighbor_interpolate(points_mean[:,:-1].contiguous(), vx_nxyz, vx_feat)
-       
-            
-#         print("vxnet")
-#         print("X DENSE SHAPE", x.dense().shape)
 
         out = self.extra_conv(x)
 
         if is_test:
             return out, None
-#         print("vxnet")
         pointwise = self.point_fc(torch.cat([p1, p2, p3], dim=-1))
         point_cls = self.point_cls(pointwise)
         point_reg = self.point_reg(pointwise)

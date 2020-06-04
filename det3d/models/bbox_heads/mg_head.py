@@ -38,8 +38,7 @@ def add_sin_difference(boxes1, boxes2):
 
 
 def _get_pos_neg_loss(cls_loss, labels):
-    # cls_loss: [N, num_anchors, num_class]
-    # labels: [N, num_anchors]
+
     batch_size = cls_loss.shape[0]
     if cls_loss.shape[-1] == 1 or len(cls_loss.shape) == 2:
         cls_pos_loss = (labels > 0).type_as(cls_loss) * cls_loss.view(batch_size, -1)
@@ -234,7 +233,7 @@ def aux_loss(points, point_cls, point_reg, gt_bboxes):
 
     return dict(
         aux_loss_cls = [aux_loss_cls],
-#         aux_loss_reg = [aux_loss_reg],
+        aux_loss_reg = [aux_loss_reg],
     )
 
 
@@ -639,9 +638,11 @@ class MultiGroupHead(nn.Module):
                 gt_box = np.vstack((gt_box, example["annos"][batch_size]["gt_boxes"][i][:,:7]))
             gt_box = torch.Tensor(gt_box)
             gt_boxes.append(gt_box)
+            
         aux_loss1 = aux_loss(*point_misc, gt_bboxes=gt_boxes)
         aux_loss1["aux_loss_cls"] = aux_loss1["aux_loss_cls"]*1
-#         aux_loss1["aux_loss_reg"] = aux_loss1["aux_loss_reg"]*2
+        aux_loss1["aux_loss_reg"] = aux_loss1["aux_loss_reg"]*2
+        
         for task_id, preds_dict in enumerate(preds_dicts):
             losses = dict()
             num_class = self.num_classes[task_id]
@@ -739,18 +740,13 @@ class MultiGroupHead(nn.Module):
         """convert batch-key to key-batch
         """
         rets_merged = defaultdict(list)
-#         rets.update(aux_loss1)
         for ret in rets:
             for k, v in ret.items():
                 rets_merged[k].append(v)
-#         print(rets_merged)
-#         print("-------------")
-#         print(rets_merged["loss"])
+
         rets_merged["loss"].append(aux_loss1["aux_loss_cls"][0])
-#         rets_merged["loss"].append(aux_loss1["aux_loss_reg"][0])
+        rets_merged["loss"].append(aux_loss1["aux_loss_reg"][0])
         rets_merged.update(aux_loss1)
-#         print(rets_merged["loss"])
-#         print("RETS MERGED",rets_merged)
         return rets_merged
 
     def predict(self, example, preds_dicts, test_cfg, **kwargs):
