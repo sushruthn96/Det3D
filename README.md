@@ -1,5 +1,8 @@
 # Structure Aware Det3D
 
+## Installation
+Please see [INSTALLATION.md](https://github.com/sushruthn96/Det3D/blob/master/INSTALLATION.md]) for detailed installation instructions.
+
 ## Training 
 First prepare dataset for training:
 ```shell
