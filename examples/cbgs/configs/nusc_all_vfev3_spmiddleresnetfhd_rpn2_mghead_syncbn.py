@@ -1,5 +1,7 @@
 import itertools
 import logging
+import os
+from datetime import datetime
 
 from det3d.builder import build_box_coder
 from det3d.utils.config_tool import get_downsample_factor
@@ -385,7 +387,8 @@ total_epochs = 5
 device_ids = range(8)
 dist_params = dict(backend="nccl", init_method="env://")
 log_level = "INFO"
-work_dir = "./experiments"
+work_dir = os.path.join('.', 'experiments', datetime.now().strftime("%Y-%m-%d-%H:%M"))
+os.makedirs(work_dir)
 load_from = None
 resume_from = None
 workflow = [("train", 1), ("val", 1)]
