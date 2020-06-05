@@ -233,12 +233,12 @@ test_cfg = dict(
 # dataset settings
 dataset_type = "NuScenesDataset"
 n_sweeps = 10
-data_root = "../../nuscenes_data/"
+data_root = "/mnt/cvrr-nas/WorkArea4/WorkArea4_Backedup/Datasets/nuScenes/"
 
 db_sampler = dict(
     type="GT-AUG",
     enable=True,
-    db_info_path="../../nuscenes_data/dbinfos_train_10sweeps_withvelo.pkl",
+    db_info_path=data_root+"dbinfos_train_10sweeps_withvelo.pkl",
     sample_groups=[
         dict(car=2),
         dict(truck=3),
@@ -321,9 +321,9 @@ test_pipeline = [
     dict(type="Reformat"),
 ]
 
-train_anno = "../../nuscenes_data/infos_train_10sweeps_withvelo.pkl"
-val_anno = "../../nuscenes_data/infos_val_10sweeps_withvelo.pkl"
-test_anno = "../../nuscenes_data/infos_val_10sweeps_withvelo.pkl"
+train_anno = data_root + "infos_train_10sweeps_withvelo.pkl"
+val_anno = data_root + "infos_val_10sweeps_withvelo.pkl"
+test_anno = data_root + "infos_val_10sweeps_withvelo.pkl"
 
 data = dict(
     samples_per_gpu=4,
@@ -385,7 +385,7 @@ total_epochs = 5
 device_ids = range(8)
 dist_params = dict(backend="nccl", init_method="env://")
 log_level = "INFO"
-work_dir = "/data/Outputs/MegDet3D_Outputs/SECOND_NUSC"
+work_dir = "./experiments"
 load_from = None
 resume_from = None
 workflow = [("train", 1), ("val", 1)]
