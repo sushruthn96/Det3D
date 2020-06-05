@@ -237,7 +237,7 @@ data_root = "../../nuscenes_data/"
 
 db_sampler = dict(
     type="GT-AUG",
-    enable=False,
+    enable=True,
     db_info_path="../../nuscenes_data/dbinfos_train_10sweeps_withvelo.pkl",
     sample_groups=[
         dict(car=2),
