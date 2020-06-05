@@ -388,7 +388,7 @@ device_ids = range(8)
 dist_params = dict(backend="nccl", init_method="env://")
 log_level = "INFO"
 work_dir = os.path.join('.', 'experiments', datetime.now().strftime("%Y-%m-%d-%H:%M"))
-os.makedirs(work_dir)
+os.makedirs(work_dir, exist_ok=True)
 load_from = None
 resume_from = None
 workflow = [("train", 1), ("val", 1)]
