@@ -118,7 +118,7 @@ class LoadPointCloudFromFile(object):
                     sweep_points_list.append(points_sweep)
                     sweep_times_list.append(times_sweep)
             else:
-                for i in range(len(info["sweeps"]) - nsweeps ,len(info["sweeps"])):
+                for i in range(len(info["sweeps"]) - nsweeps + 1, len(info["sweeps"])):
                     sweep = info["sweeps"][i]
                     points_sweep, times_sweep = read_sweep(sweep)
                     sweep_points_list.append(points_sweep)
