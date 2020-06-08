@@ -271,18 +271,23 @@ class VxNet(nn.Module):
 
     def __init__(self, num_input_features):
         super(VxNet, self).__init__()
-
-        self.conv0 = double_conv(num_input_features, 16, 'subm0')
+        
+        self.single_conv = single_conv(num_input_features,16,'subm0')
+        self.conv0 = double_conv(16, 16, 'subm0')
+        self.conv0_dense = double_conv(16, 16, 'subm0')
         self.down0 = stride_conv(16, 32, 'down0')
-
         self.conv1 = double_conv(32, 32, 'subm1')
+        self.conv1_dense = double_conv(32, 32, 'subm1')
+        
         self.down1 = stride_conv(32, 64, 'down1')
-
-        self.conv2 = triple_conv(64, 64, 'subm2')
+        self.conv2 = double_conv(64, 64, 'subm2')
+        self.conv2_dense = double_conv(64, 64, 'subm2')
+        
+        # increase out channels to 128. May give errors
         self.down2 = stride_conv(64, 64, 'down2')
-        # increase channels
-        self.conv3 = triple_conv(64, 64, 'subm3')  # middle line
-
+        self.conv3 = double_conv(64, 64, 'subm3')  # middle line
+        self.conv3_dense = double_conv(64, 64, 'subm3')
+        
         self.extra_conv = spconv.SparseSequential(
             spconv.SparseConv3d(64, 64, (1, 1, 1), (1, 1, 1), bias=False),  # shape no change
             nn.BatchNorm1d(64, eps=1e-3, momentum=0.01),
@@ -295,15 +300,20 @@ class VxNet(nn.Module):
 
     def forward(self, x, points_mean, is_test=False):
         
+        x = self.single_conv(x)
         x = self.conv0(x)
+        x = self.conv0_dense(x)
         x = self.down0(x)  # sp
         x = self.conv1(x)  # 2x sub
+        x = self.conv1_dense(x)
+        
         if not is_test:
             vx_feat, vx_nxyz = tensor2points(x, voxel_size=(.2, .2, .4))
             p1 = nearest_neighbor_interpolate(points_mean[:,:-1].contiguous(), vx_nxyz, vx_feat)
 
         x = self.down1(x)
         x = self.conv2(x)
+        x = self.conv2_dense(x)
 
         if not is_test:
             vx_feat, vx_nxyz = tensor2points(x, voxel_size=(.4, .4, .8))
@@ -311,6 +321,7 @@ class VxNet(nn.Module):
 
         x = self.down2(x)
         x = self.conv3(x)
+        x = self.conv3_dense(x)
 
         if not is_test:
             vx_feat, vx_nxyz = tensor2points(x, voxel_size=(.8, .8, 1.6))
