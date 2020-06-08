@@ -168,15 +168,15 @@ model = dict(
         norm_cfg=norm_cfg,
         logger=logging.getLogger("RPN"),
     ),
-    extra_head=dict(
-        type="MultiGroupPSWarpHead",
-        grid_offsets = (0., 40.),
-        featmap_stride=.4,
-        in_channels=512,
-        num_classes=[1,2,2,1,2,2],
-        num_groups=6,
-        num_parts=28,
-    ),
+    #extra_head=dict(
+    #    type="MultiGroupPSWarpHead",
+    #    grid_offsets = (0., 40.),
+    #    featmap_stride=.4,
+    #    in_channels=512,
+    #    num_classes=[1,2,2,1,2,2],
+    #    num_groups=6,
+    #    num_parts=28,
+    #),
     bbox_head=dict(
         # type='RPNHead',
         type="MultiGroupHead",
@@ -235,7 +235,7 @@ test_cfg = dict(
 # dataset settings
 dataset_type = "NuScenesDataset"
 n_sweeps = 10
-data_root = "/mnt/cvrr-nas/WorkArea4/WorkArea4_Backedup/Datasets/nuScenes/"
+data_root = "/data/Datasets/nuScenes/"
 
 db_sampler = dict(
     type="GT-AUG",
@@ -388,7 +388,6 @@ device_ids = range(8)
 dist_params = dict(backend="nccl", init_method="env://")
 log_level = "INFO"
 work_dir = os.path.join('.', 'experiments', datetime.now().strftime("%Y-%m-%d-%H:%M"))
-os.makedirs(work_dir, exist_ok=True)
 load_from = None
 resume_from = None
 workflow = [("train", 1), ("val", 1)]
