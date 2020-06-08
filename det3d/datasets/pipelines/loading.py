@@ -111,14 +111,14 @@ class LoadPointCloudFromFile(object):
                 nsweeps, len(info["sweeps"])
             )
 
-            if (res["mode"] == "val"):
-                for i in range(len(info["sweeps"]) - nsweeps + 1 ,len(info["sweeps"])):
+            if res["mode"] == "train":
+                for i in np.random.choice(len(info["sweeps"]), nsweeps - 1, replace=False):
                     sweep = info["sweeps"][i]
                     points_sweep, times_sweep = read_sweep(sweep)
                     sweep_points_list.append(points_sweep)
                     sweep_times_list.append(times_sweep)
             else:
-                for i in np.random.choice(len(info["sweeps"]), nsweeps - 1, replace=False):
+                for i in range(len(info["sweeps"]) - nsweeps ,len(info["sweeps"])):
                     sweep = info["sweeps"][i]
                     points_sweep, times_sweep = read_sweep(sweep)
                     sweep_points_list.append(points_sweep)

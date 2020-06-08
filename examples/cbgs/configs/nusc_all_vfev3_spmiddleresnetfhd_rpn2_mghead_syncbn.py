@@ -235,7 +235,7 @@ test_cfg = dict(
 # dataset settings
 dataset_type = "NuScenesDataset"
 n_sweeps = 10
-data_root = "/mnt/cvrr-nas/WorkArea4/WorkArea4_Backedup/Datasets/nuScenes/"
+data_root = "/data/Datasets/nuScenes/"
 
 db_sampler = dict(
     type="GT-AUG",
