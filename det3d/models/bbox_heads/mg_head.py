@@ -633,9 +633,9 @@ class MultiGroupHead(nn.Module):
         rets = []
         gt_boxes = []
         for batch_size in range(len(example["annos"])):
-            gt_box = example["annos"][batch_size]["gt_boxes"][0][:,:7]
+            gt_box = example["annos"][batch_size]["gt_boxes"][0][:,[0,1,2,3,4,5,8]]
             for i in range(1, len(example["annos"][batch_size]["gt_boxes"])):
-                gt_box = np.vstack((gt_box, example["annos"][batch_size]["gt_boxes"][i][:,:7]))
+                gt_box = np.vstack((gt_box, example["annos"][batch_size]["gt_boxes"][i][:,[0,1,2,3,4,5,8]]))
             gt_box = torch.Tensor(gt_box)
             gt_boxes.append(gt_box)
             
