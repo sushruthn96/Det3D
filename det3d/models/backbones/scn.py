@@ -432,7 +432,7 @@ class SASpMiddleResNetFHD(nn.Module):
         self.point_cls = nn.Linear(64, 1, bias=False)
         self.point_reg = nn.Linear(64, 3, bias=False)
 
-    def nearest_neighbor_interpolate(unknown, known, known_feats):
+    def nearest_neighbor_interpolate(self, unknown, known, known_feats):
         """
         :param pts: (n, 4) tensor of the bxyz positions of the unknown features
         :param ctr: (m, 4) tensor of the bxyz positions of the known features
