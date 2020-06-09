@@ -20,7 +20,7 @@ class VoxelNet(SingleStageDetector):
 
     def extract_feat(self, data):
         input_features = self.reader(data["features"], data["num_voxels"])
-        x, points = self.backbone(input_features, data["coors"], data["batch_size"], data["input_shape"])
+        x, points = self.backbone(input_features, data["coors"], data["batch_size"], data["input_shape"], data["is_train"])
 
         if self.with_neck:
             x = self.neck(x)
@@ -40,6 +40,7 @@ class VoxelNet(SingleStageDetector):
             coors=coordinates,
             batch_size=batch_size,
             input_shape=example["shape"][0],
+            is_train=return_loss,
         )
 
         x, points = self.extract_feat(data)
