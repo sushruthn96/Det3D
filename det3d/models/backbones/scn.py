@@ -466,11 +466,11 @@ class SASpMiddleResNetFHD(nn.Module):
         ret4 = self.end_conv(ret3)
 
         if is_train: #auxillary loss
-            vx_feat, vx_nxyz = tensor2points(ret1, voxel_size=(.2, .2, .4))
+            vx_feat, vx_nxyz = tensor2points(ret1, offset=(-50.4, -50.4, -5.0), voxel_size=(.2, .2, .4))
             p1 = self.nearest_neighbor_interpolate(points_mean[:,:-1].contiguous(), vx_nxyz, vx_feat)
-            vx_feat, vx_nxyz = tensor2points(ret2, voxel_size=(.4, .4, .8))
+            vx_feat, vx_nxyz = tensor2points(ret2, offset=(-50.4, -50.4, -5.0), voxel_size=(.4, .4, .8))
             p2 = self.nearest_neighbor_interpolate(points_mean[:,:-1].contiguous(), vx_nxyz, vx_feat)
-            vx_feat, vx_nxyz = tensor2points(ret3, voxel_size=(.8, .8, 1.6))
+            vx_feat, vx_nxyz = tensor2points(ret3, offset=(-50.4, -50.4, -5.0), voxel_size=(.8, .8, 1.6))
             p3 = self.nearest_neighbor_interpolate(points_mean[:,:-1].contiguous(), vx_nxyz, vx_feat)
             pointwise = self.point_fc(torch.cat([p1, p2, p3], dim=-1))
             point_cls = self.point_cls(pointwise)
