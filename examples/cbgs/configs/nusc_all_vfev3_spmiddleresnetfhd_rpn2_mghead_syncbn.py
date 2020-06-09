@@ -1,7 +1,5 @@
 import itertools
 import logging
-import os
-from datetime import datetime
 
 from det3d.builder import build_box_coder
 from det3d.utils.config_tool import get_downsample_factor
@@ -147,16 +145,8 @@ model = dict(
         norm_cfg=norm_cfg,
     ),
     backbone=dict(
-                type='SpMiddleFHD', ds_factor=8, 
-        output_shape=[40, 1600, 1408],
-        num_input_features=5,
-        num_hidden_features=64*5
+        type="SASpMiddleResNetFHD", num_input_features=5, ds_factor=8, norm_cfg=norm_cfg,
     ),
-
-#     backbone=dict(
-#             type='SpMiddleResNetFHD',  
-#     num_input_features=5,ds_factor=8, norm_cfg=norm_cfg,
-#     ),
     neck=dict(
         type="RPN",
         layer_nums=[5, 5],
@@ -164,19 +154,10 @@ model = dict(
         ds_num_filters=[128, 256],
         us_layer_strides=[1, 2],
         us_num_filters=[256, 256],
-        num_input_features=384,
+        num_input_features=256,
         norm_cfg=norm_cfg,
         logger=logging.getLogger("RPN"),
     ),
-    #extra_head=dict(
-    #    type="MultiGroupPSWarpHead",
-    #    grid_offsets = (0., 40.),
-    #    featmap_stride=.4,
-    #    in_channels=512,
-    #    num_classes=[1,2,2,1,2,2],
-    #    num_groups=6,
-    #    num_parts=28,
-    #),
     bbox_head=dict(
         # type='RPNHead',
         type="MultiGroupHead",
@@ -235,12 +216,12 @@ test_cfg = dict(
 # dataset settings
 dataset_type = "NuScenesDataset"
 n_sweeps = 10
-data_root = "/data/Datasets/nuScenes/"
+data_root = "/data/Datasets/nuScenes"
 
 db_sampler = dict(
     type="GT-AUG",
     enable=True,
-    db_info_path=data_root+"dbinfos_train_10sweeps_withvelo.pkl",
+    db_info_path=data_root+"/dbinfos_train_10sweeps_withvelo.pkl",
     sample_groups=[
         dict(car=2),
         dict(truck=3),
@@ -323,9 +304,9 @@ test_pipeline = [
     dict(type="Reformat"),
 ]
 
-train_anno = data_root + "infos_train_10sweeps_withvelo.pkl"
-val_anno = data_root + "infos_val_10sweeps_withvelo.pkl"
-test_anno = data_root + "infos_val_10sweeps_withvelo.pkl"
+train_anno = data_root+"/infos_train_10sweeps_withvelo.pkl"
+val_anno = data_root+"/infos_val_10sweeps_withvelo.pkl"
+test_anno = None
 
 data = dict(
     samples_per_gpu=4,
@@ -383,11 +364,11 @@ log_config = dict(
 )
 # yapf:enable
 # runtime settings
-total_epochs = 5
+total_epochs = 20
 device_ids = range(8)
 dist_params = dict(backend="nccl", init_method="env://")
 log_level = "INFO"
-work_dir = os.path.join('.', 'experiments', datetime.now().strftime("%Y-%m-%d-%H:%M"))
+work_dir = "/data/Outputs/MegDet3D_Outputs/SECOND_NUSC"
 load_from = None
 resume_from = None
 workflow = [("train", 1), ("val", 1)]
