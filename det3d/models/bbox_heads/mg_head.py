@@ -856,25 +856,26 @@ class MultiGroupHead(nn.Module):
             ret_list.append(ret)
 
         # Apply multi-group NMS
-        if test_cfg.nms.use_rotate_nms:
-            nms_func = box_torch_ops.rotate_nms
-        else:
-            nms_func = box_torch_ops.nms
-            
-        #for each sample in the bacth
-        for sample_num in range(len(ret_list)):
-            boxes_for_nms = ret_list[sample_num]["box3d_lidar"][:, [0, 1, 3, 4, -1]]
-            # the nms in 3d detection just remove overlap boxes.
-            selected = nms_func(
-                boxes_for_nms,
-                ret_list[sample_num]["scores"],
-                pre_max_size=test_cfg.nms.nms_pre_max_size,
-                post_max_size=6*test_cfg.nms.nms_post_max_size,
-                iou_threshold=test_cfg.nms.nms_iou_threshold, #can be set to 0.3
-            )
-            ret_list[sample_num]["box3d_lidar"] = ret_list[sample_num]["box3d_lidar"][selected]
-            ret_list[sample_num]["scores"] = ret_list[sample_num]["scores"][selected]
-            ret_list[sample_num]["label_preds"] = ret_list[sample_num]["label_preds"][selected]
+        if test_cfg.nms.use_multi_group_nms:
+            if test_cfg.nms.use_rotate_nms:
+                nms_func = box_torch_ops.rotate_nms
+            else:
+                nms_func = box_torch_ops.nms
+
+            #for each sample in the bacth
+            for sample_num in range(len(ret_list)):
+                boxes_for_nms = ret_list[sample_num]["box3d_lidar"][:, [0, 1, 3, 4, -1]]
+                # the nms in 3d detection just remove overlap boxes.
+                selected = nms_func(
+                    boxes_for_nms,
+                    ret_list[sample_num]["scores"],
+                    pre_max_size=test_cfg.nms.nms_pre_max_size,
+                    post_max_size=6*test_cfg.nms.nms_post_max_size,
+                    iou_threshold=test_cfg.nms.nms_iou_threshold, #can be set to 0.3
+                )
+                ret_list[sample_num]["box3d_lidar"] = ret_list[sample_num]["box3d_lidar"][selected]
+                ret_list[sample_num]["scores"] = ret_list[sample_num]["scores"][selected]
+                ret_list[sample_num]["label_preds"] = ret_list[sample_num]["label_preds"][selected]
 
         return ret_list
 
