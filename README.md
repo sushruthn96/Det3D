@@ -64,3 +64,6 @@ Testing with trained model weights can be carried out as follows:
 ```shell
 python -m torch.distributed.launch --nproc_per_node=$NUM_GPUS ./tools/dist_test.py $CONFIG_FILE --work_dir=$WORK_DIR --checkpoint=$CHECKPOINT
 ```
+
+## Results
+All the project results, observations and future work are included in [report.pdf](https://github.com/sushruthn96/Det3D/blob/master/report.pdf)
