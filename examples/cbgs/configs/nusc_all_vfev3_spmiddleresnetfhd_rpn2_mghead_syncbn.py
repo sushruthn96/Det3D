@@ -203,6 +203,7 @@ train_cfg = dict(assigner=assigner)
 test_cfg = dict(
     nms=dict(
         use_rotate_nms=True,
+        use_multi_group_nms=True,
         use_multi_class_nms=False,
         nms_pre_max_size=1000,
         nms_post_max_size=80,
